@@ -5,6 +5,7 @@ import {
 	getQuestionsByTeacher,
 	getAllQuestions,
 	updateQuestion,
+	deleteQuestion,
 } from "../controllers/question.controller.mjs";
 import { authenticate, authorize } from "../middlewares/auth.mjs";
 
@@ -29,11 +30,7 @@ router.get(
 );
 
 // Get all questions created by a specific teacher
-router.get(
-	"/questions/teacher/:teacher_id",
-	authenticate,
-	getQuestionsByTeacher
-);
+router.get("/questions/teacher/:username", authenticate, getQuestionsByTeacher);
 
 // Update a question by ID (only HOD & Teachers)
 router.put(
@@ -41,6 +38,13 @@ router.put(
 	authenticate,
 	authorize(["hod", "teacher"]),
 	updateQuestion
+);
+// Delete a question by ID (only HOD and Teachers)
+router.delete(
+	"/questions/:id",
+	authenticate,
+	authorize(["hod", "teacher"]),
+	deleteQuestion
 );
 
 export default router;

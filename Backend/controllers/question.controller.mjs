@@ -1,5 +1,6 @@
 import Question from "../models/question.model.mjs";
 import Subject from "../models/subject.model.mjs";
+import User from "../models/user.model.mjs";
 
 /**
  * @desc    Create a new question
@@ -125,13 +126,17 @@ const getQuestionsBySubject = async (req, res) => {
 
 /**
  * @desc    Get all questions created by a teacher
- * @route   GET /questions/teacher/:teacher_id
+ * @route   GET /questions/teacher/:username
  */
 const getQuestionsByTeacher = async (req, res) => {
 	try {
-		const { teacher_id } = req.params;
+		const { username } = req.params;
+		const teacher = await User.findOne({ username: username });
+		console.log(teacher);
 
-		const questions = await Question.find({ created_by: teacher_id });
+		if (!teacher || teacher.role != "teacher")
+			return res.status(404).json({ error: "Teacher not found" });
+		const questions = await Question.find({ created_by: teacher._id });
 
 		res.status(200).json(questions);
 	} catch (error) {
@@ -151,6 +156,7 @@ const getQuestionsByTeacher = async (req, res) => {
 const getAllQuestions = async (req, res) => {
 	try {
 		const { sort_by } = req.query;
+		console.log(sort_by);
 
 		const sortOptions = {};
 		if (["upvote", "downvote", "saved_count"].includes(sort_by)) {
@@ -177,7 +183,9 @@ const updateQuestion = async (req, res) => {
 	try {
 		const { id } = req.params;
 		const updateData = req.body;
-
+		// Fields that should NOT be updated
+		const restrictedFields = ["upvote", "downvote", "saved_count", "_id"];
+		restrictedFields.forEach((field) => delete updateData[field]);
 		const updatedQuestion = await Question.findByIdAndUpdate(
 			id,
 			updateData,
@@ -200,10 +208,35 @@ const updateQuestion = async (req, res) => {
 	}
 };
 
+/**
+ * @desc    Delete a question
+ * @route   DELETE /questions/:id
+ */
+const deleteQuestion = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const question = await Question.findById(id);
+
+		if (!question) {
+			return res.status(404).json({ error: "Question not found" });
+		}
+
+		await question.deleteOne();
+		res.status(200).json({ message: "Question deleted successfully." });
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({
+			error: "Error deleting question",
+			message: error.message,
+		});
+	}
+};
+
 export {
 	createQuestion,
 	getQuestionsBySubject,
 	getQuestionsByTeacher,
 	getAllQuestions,
 	updateQuestion,
+	deleteQuestion,
 };

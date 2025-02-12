@@ -113,7 +113,12 @@ const signup = async (req, res) => {
 const login = async (req, res) => {
 	const { username, email, phone_number, password } = req.body;
 
-	if ((!email && !phone_number && !username) || !password) {
+	const trimmedUsername = username?.trim().toLowerCase();
+	const trimmedEmail = email?.trim().toLowerCase();
+	const trimmedPhoneNumber = phone_number?.trim();
+	const trimmedPassword = password.trim();
+
+	if ((!email && !phone_number && !trimmedUsername) || !password) {
 		return res.status(400).json({
 			error: "(Email or phone number or username) and password are required",
 		});
@@ -121,7 +126,7 @@ const login = async (req, res) => {
 
 	try {
 		const user = await User.findOne({
-			$or: [{ email }, { phone_number }, { username }],
+			$or: [{ email }, { phone_number }, { trimmedUsername }],
 		});
 		if (!user) {
 			return res.status(400).json({ error: "Invalid credentials" });
@@ -135,7 +140,7 @@ const login = async (req, res) => {
 		}
 
 		const token = jwt.sign(
-			{ id: user._id, role: user.role, username: user.username },
+			{ id: user._id, role: user.role, username: user.trimmedUsername },
 			process.env.JWT_SECRET,
 			{ expiresIn: "1h" }
 		);
@@ -201,37 +206,16 @@ const updateUser = async (req, res) => {
 		const updates = req.body; // Get update fields from request body
 		console.log(updates);
 
-		// Ensure password is not updated here for security reasons
+	
+		
+		
 		if (updates.password) {
 			return res.status(400).json({
 				success: false,
 				message: "Password cannot be updated here",
 			});
 		}
-		/*
-		// Ensure __v is not updated here 
-		if (updates.__v) {
-			return res.status(400).json({
-				success: false,
-				message: "__v cannot be updated",
-			});
-		}
-		// Ensure created_at is not updated here 
-		if (updates.created_at) {
-			return res.status(400).json({
-				success: false,
-				message: "created_at cannot be updated",
-			});
-		}
-		// Ensure updated_at is not updated here 
-		if (updates.updated_at) {
-			return res.status(400).json({
-				success: false,
-				message: "updated_at cannot be updated",
-			});
-		}*/
 
-		// Ensure _id is not updated here for security reasons
 		if (updates._id) {
 			return res.status(400).json({
 				success: false,
