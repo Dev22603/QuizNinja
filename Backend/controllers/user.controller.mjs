@@ -6,19 +6,23 @@ import User from "../models/user.model.mjs";
 const signup = async (req, res) => {
 	console.log(req.body);
 
-	const { name, email, phone_number, password, role } = req.body;
+	const { name, username, email, phone_number, password, role } = req.body;
 
-	if (!name || !email || !password || !phone_number || !role) {
+	if (!name || !email || !password || !phone_number || !role || !username) {
 		return res.status(400).json({ message: "Please fill in all fields" });
 	}
 
 	// Trim inputs
 	const trimmedName = name.trim();
-	const trimmedEmail = email.trim();
+	const trimmedEmail = email.trim().toLowerCase();
 	const trimmedPhoneNumber = phone_number.trim();
 	const trimmedPassword = password.trim();
 	const trimmedRole = role.trim().toLowerCase(); // Ensure case consistency
+	const trimmedUsername = username.trim().toLowerCase();
 
+	if (!/^[a-z_]+$/.test(trimmedUsername)) {
+		return res.status(400).json({ error: "Invalid username format" });
+	}
 	// Validate role (only 3 allowed)
 	const allowedRoles = ["student", "teacher", "hod"];
 	if (!allowedRoles.includes(trimmedRole)) {
@@ -69,6 +73,15 @@ const signup = async (req, res) => {
 				.status(400)
 				.json({ error: "User with this phone number already exists" });
 		}
+		// Check if the username already exists
+		const existingUsername = await User.findOne({
+			username: trimmedUsername,
+		});
+		if (existingUsername) {
+			return res
+				.status(400)
+				.json({ error: "User with this username already exists" });
+		}
 
 		// Hash the password before saving
 		const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
@@ -76,6 +89,7 @@ const signup = async (req, res) => {
 		// Create a new user
 		const newUser = new User({
 			name: trimmedName,
+			username: trimmedUsername,
 			email: trimmedEmail,
 			phone_number: trimmedPhoneNumber,
 			role: trimmedRole,
@@ -97,17 +111,17 @@ const signup = async (req, res) => {
 };
 
 const login = async (req, res) => {
-	const { email, phone_number, password } = req.body;
+	const { username, email, phone_number, password } = req.body;
 
-	if ((!email && !phone_number) || !password) {
-		return res
-			.status(400)
-			.json({ error: "Email or phone number and password are required" });
+	if ((!email && !phone_number && !username) || !password) {
+		return res.status(400).json({
+			error: "(Email or phone number or username) and password are required",
+		});
 	}
 
 	try {
 		const user = await User.findOne({
-			$or: [{ email }, { phone_number }],
+			$or: [{ email }, { phone_number }, { username }],
 		});
 		if (!user) {
 			return res.status(400).json({ error: "Invalid credentials" });
@@ -121,7 +135,7 @@ const login = async (req, res) => {
 		}
 
 		const token = jwt.sign(
-			{ id: user._id, role: user.role },
+			{ id: user._id, role: user.role, username: user.username },
 			process.env.JWT_SECRET,
 			{ expiresIn: "1h" }
 		);
@@ -141,6 +155,29 @@ const getUserById = async (req, res) => {
 	try {
 		const { id } = req.params; // Extract user ID from request parameters
 		const user = await User.findById(id).select("-password"); // Exclude password field
+
+		if (!user) {
+			return res
+				.status(404)
+				.json({ success: false, message: "User not found" });
+		}
+
+		res.status(200).json({ success: true, user });
+	} catch (error) {
+		console.error("Error fetching user:", error);
+		res.status(500).json({
+			success: false,
+			message: "Internal server error",
+		});
+	}
+};
+
+const getUserByUsername = async (req, res) => {
+	try {
+		const { username } = req.params; // Extract user ID from request parameters
+		const user = await User.findOne({ username: username }).select(
+			"-password"
+		); // Exclude password field
 
 		if (!user) {
 			return res
@@ -194,8 +231,6 @@ const updateUser = async (req, res) => {
 			});
 		}*/
 
-
-		
 		// Ensure _id is not updated here for security reasons
 		if (updates._id) {
 			return res.status(400).json({
@@ -256,4 +291,11 @@ const deleteUser = async (req, res) => {
 	}
 };
 
-export { signup, login, getUserById, updateUser, deleteUser };
+export {
+	signup,
+	login,
+	getUserById,
+	updateUser,
+	deleteUser,
+	getUserByUsername,
+};

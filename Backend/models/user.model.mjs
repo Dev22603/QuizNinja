@@ -3,6 +3,13 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema(
 	{
 		name: { type: String, required: true, minlength: 2 },
+		username: {
+			type: String,
+			required: true,
+			unique: true,
+			lowercase: true,
+			match: [/^[a-z_]+$/, "Username can only contain lowercase letters and underscores"],
+		},
 		role: {
 			type: String,
 			enum: ["student", "teacher", "hod"],
