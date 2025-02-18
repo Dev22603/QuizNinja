@@ -17,7 +17,7 @@ const questionSchema = new mongoose.Schema(
 		image_url: { type: String, default: "" },
 		options: { type: [String], required: true },
 		correct_option_ids: { type: [Number], required: true },
-		time_required: { type: Number, min: 5 },
+		difficulty: { type: Number, min: 1, max: 5 },
 		upvote: { type: Number, default: 0 },
 		downvote: { type: Number, default: 0 },
 		saved_count: { type: Number, default: 0 },
@@ -25,4 +25,5 @@ const questionSchema = new mongoose.Schema(
 	{ timestamps: true }
 );
 
-export default mongoose.model("Question", questionSchema);
+const Question = mongoose.model("Question", questionSchema);
+export default Question;

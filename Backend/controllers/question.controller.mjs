@@ -15,7 +15,7 @@ const createQuestion = async (req, res) => {
 			image_url,
 			options,
 			correct_option_ids,
-			time_required,
+			difficulty,
 		} = req.body;
 
 		const user = req.user;
@@ -59,10 +59,10 @@ const createQuestion = async (req, res) => {
 			});
 		}
 
-		if (!time_required || time_required < 1) {
-			return res
-				.status(400)
-				.json({ error: "Time required must be at least 1 second." });
+		if (!difficulty || difficulty < 1 || difficulty > 5) {
+			return res.status(400).json({
+				error: "Difficulty must be at least 1 and at most 5.",
+			});
 		}
 		const created_by = user.id;
 
@@ -81,7 +81,7 @@ const createQuestion = async (req, res) => {
 			image_url,
 			options,
 			correct_option_ids,
-			time_required,
+			difficulty,
 		});
 
 		await newQuestion.save();
@@ -94,6 +94,114 @@ const createQuestion = async (req, res) => {
 
 		res.status(500).json({
 			error: "An error occurred while creating the question.",
+			message: error.message,
+		});
+	}
+};
+
+/**
+ * @desc    Create multiple questions
+ * @route   POST /questions/bulk
+ */
+const createMultipleQuestions = async (req, res) => {
+	try {
+		const { questions } = req.body;
+		const user = req.user;
+
+		if (!Array.isArray(questions) || questions.length === 0) {
+			return res
+				.status(400)
+				.json({ error: "A list of questions is required." });
+		}
+
+		const formattedQuestions = [];
+
+		for (const questionData of questions) {
+			const {
+				question,
+				subject_code,
+				reference_book_or_source,
+				image_url,
+				options,
+				correct_option_ids,
+				difficulty,
+			} = questionData;
+
+			if (!question || !question.trim()) {
+				return res
+					.status(400)
+					.json({ error: "Each question must have text." });
+			}
+
+			if (!subject_code) {
+				return res
+					.status(400)
+					.json({ error: "Each question must have a subject code." });
+			}
+
+			if (!options || options.length < 2) {
+				return res.status(400).json({
+					error: "Each question must have at least two options.",
+				});
+			}
+
+			if (!correct_option_ids || correct_option_ids.length === 0) {
+				return res.status(400).json({
+					error: "Each question must have at least one correct option.",
+				});
+			}
+
+			const invalidOptionIds = correct_option_ids.some(
+				(id) => id < 0 || id >= options.length
+			);
+			if (invalidOptionIds) {
+				return res.status(400).json({
+					error: `Correct option IDs must be within valid range for each question.`,
+				});
+			}
+
+			const uniqueOptionIds = new Set(correct_option_ids);
+			if (uniqueOptionIds.size !== correct_option_ids.length) {
+				return res.status(400).json({
+					error: "Correct option IDs must be unique for each question.",
+				});
+			}
+
+			if (!difficulty || difficulty < 1 || difficulty > 5) {
+				return res.status(400).json({
+					error: "Difficulty must be at least 1 and at most 5.",
+				});
+			}
+
+			const subject = await Subject.findOne({ subject_code });
+			if (!subject) {
+				return res.status(404).json({
+					error: `Subject with code ${subject_code} not found.`,
+				});
+			}
+
+			formattedQuestions.push({
+				question,
+				subject_id: subject._id,
+				created_by: user.id,
+				reference_book_or_source,
+				image_url,
+				options,
+				correct_option_ids,
+				difficulty,
+			});
+		}
+
+		const newQuestions = await Question.insertMany(formattedQuestions);
+
+		res.status(201).json({
+			message: "Questions created successfully.",
+			questions: newQuestions,
+		});
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({
+			error: "An error occurred while creating the questions.",
 			message: error.message,
 		});
 	}
@@ -234,6 +342,7 @@ const deleteQuestion = async (req, res) => {
 
 export {
 	createQuestion,
+	createMultipleQuestions,
 	getQuestionsBySubject,
 	getQuestionsByTeacher,
 	getAllQuestions,

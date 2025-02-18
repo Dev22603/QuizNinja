@@ -6,6 +6,7 @@ import {
 	getAllQuestions,
 	updateQuestion,
 	deleteQuestion,
+	createMultipleQuestions
 } from "../controllers/question.controller.mjs";
 import { authenticate, authorize } from "../middlewares/auth.mjs";
 
@@ -17,6 +18,13 @@ router.post(
 	authenticate,
 	authorize(["hod", "teacher"]),
 	createQuestion
+);
+// Create multiple questions (only HOD & Teachers)
+router.post(
+    "/questions/create_multiple",
+    authenticate,
+    authorize(["hod", "teacher"]),
+    createMultipleQuestions
 );
 
 // Get all questions (with optional sorting)
