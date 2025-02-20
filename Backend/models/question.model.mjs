@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 const questionSchema = new mongoose.Schema(
 	{
+		tenantId: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Tenant",
+			required: true, // Ensures each question is linked to a coaching center
+		},
 		question: { type: String, required: true, trim: true },
 		subject_id: {
 			type: mongoose.Schema.Types.ObjectId,
@@ -18,9 +23,6 @@ const questionSchema = new mongoose.Schema(
 		options: { type: [String], required: true },
 		correct_option_ids: { type: [Number], required: true },
 		difficulty: { type: Number, min: 1, max: 5 },
-		upvote: { type: Number, default: 0 },
-		downvote: { type: Number, default: 0 },
-		saved_count: { type: Number, default: 0 },
 	},
 	{ timestamps: true }
 );

@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
 	{
+		tenantId: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Tenant",
+			required: true, // Ensures each user belongs to a coaching center
+		},
 		name: { type: String, required: true, minlength: 2 },
 		username: {
 			type: String,
@@ -12,7 +17,7 @@ const userSchema = new mongoose.Schema(
 		},
 		role: {
 			type: String,
-			enum: ["student", "teacher", "hod"],
+			enum: ["student", "teacher", "hod", "admin"],
 			required: true,
 		},
 		email: {
@@ -27,7 +32,6 @@ const userSchema = new mongoose.Schema(
 		phone_number: {
 			type: String,
 			required: true,
-			minlength: 8,
 			match: [/^\d{10}$/, "Please enter a valid 10-digit phone number"],
 		},
 		password: {
