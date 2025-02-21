@@ -13,6 +13,8 @@ app.use(express.urlencoded({ extended: true })); // If using form data
 app.use("/api", authRoutes);
 app.use("/api", subjectRoutes);
 app.use("/api", questionsRoutes);
+app.use("/api", tenantRoutes); // Prefix all routes with /api/tenants
+
 // app.use("/api/questions", interactionRoutes);
 
 export { app };
