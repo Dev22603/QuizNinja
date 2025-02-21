@@ -25,7 +25,7 @@ const signup = async (req, res) => {
         return res.status(400).json({ error: "Invalid username format" });
     }
     // Validate role (only 3 allowed)
-    const allowedRoles = ["student", "teacher", "hod"];
+    const allowedRoles = ["student", "teacher", "hod", "admin"];  
     if (!allowedRoles.includes(trimmedRole)) {
         return res.status(400).json({ error: "Invalid role provided" });
     }
