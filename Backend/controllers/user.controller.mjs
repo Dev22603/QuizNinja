@@ -2,284 +2,291 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.mjs";
+import Tenant from "../models/tenant.model.mjs";
 
 const signup = async (req, res) => {
-	console.log(req.body);
+    console.log(req.body);
 
-	const { name, username, email, phone_number, password, role } = req.body;
+    const { name, username, email, phone_number, password, role } = req.body;
 
-	if (!name || !email || !password || !phone_number || !role || !username) {
-		return res.status(400).json({ message: "Please fill in all fields" });
-	}
+    if (!name || !email || !password || !phone_number || !role || !username) {
+        return res.status(400).json({ message: "Please fill in all fields" });
+    }
 
-	// Trim inputs
-	const trimmedName = name.trim();
-	const trimmedEmail = email.trim().toLowerCase();
-	const trimmedPhoneNumber = phone_number.trim();
-	const trimmedPassword = password.trim();
-	const trimmedRole = role.trim().toLowerCase(); // Ensure case consistency
-	const trimmedUsername = username.trim().toLowerCase();
+    // Trim inputs
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPhoneNumber = phone_number.trim();
+    const trimmedPassword = password.trim();
+    const trimmedRole = role.trim().toLowerCase(); // Ensure case consistency
+    const trimmedUsername = username.trim().toLowerCase();
 
-	if (!/^[a-z_]+$/.test(trimmedUsername)) {
-		return res.status(400).json({ error: "Invalid username format" });
-	}
-	// Validate role (only 3 allowed)
-	const allowedRoles = ["student", "teacher", "hod"];
-	if (!allowedRoles.includes(trimmedRole)) {
-		return res.status(400).json({ error: "Invalid role provided" });
-	}
+    if (!/^[a-z_]+$/.test(trimmedUsername)) {
+        return res.status(400).json({ error: "Invalid username format" });
+    }
+    // Validate role (only 3 allowed)
+    const allowedRoles = ["student", "teacher", "hod"];
+    if (!allowedRoles.includes(trimmedRole)) {
+        return res.status(400).json({ error: "Invalid role provided" });
+    }
 
-	// Ensure only one HOD exists
-	if (trimmedRole === "hod") {
-		const existingHod = await User.findOne({ role: "hod" });
-		if (existingHod) {
-			return res.status(400).json({ error: "Only one HOD is allowed" });
-		}
-	}
+    // Ensure only one HOD exists
+    if (trimmedRole === "hod") {
+        const existingHod = await User.findOne({ role: "hod" });
+        if (existingHod) {
+            return res.status(400).json({ error: "Only one HOD is allowed" });
+        }
+    }
 
-	// Validate name
-	if (!trimmedName) {
-		return res.status(400).json({ message: "Name is required" });
-	}
+    // Validate name
+    if (!trimmedName) {
+        return res.status(400).json({ message: "Name is required" });
+    }
 
-	// Validate email
-	const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-	if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
-		return res.status(400).json({ error: "Invalid email format" });
-	}
+    // Validate email
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+        return res.status(400).json({ error: "Invalid email format" });
+    }
 
-	// Validate password
-	const passwordRegex =
-		/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
-	if (!trimmedPassword || !passwordRegex.test(trimmedPassword)) {
-		return res.status(400).json({ error: "Password must be strong" });
-	}
+    // Validate password
+    const passwordRegex =
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
+    if (!trimmedPassword || !passwordRegex.test(trimmedPassword)) {
+        return res.status(400).json({ error: "Password must be strong" });
+    }
 
-	try {
-		// Check if the email already exists
-		const existingUser = await User.findOne({ email: trimmedEmail });
-		if (existingUser) {
-			return res
-				.status(400)
-				.json({ error: "User with this email already exists" });
-		}
+    try {
+        // Check if the email already exists
+        const existingUser = await User.findOne({ email: trimmedEmail });
+        if (existingUser) {
+            return res
+                .status(400)
+                .json({ error: "User with this email already exists" });
+        }
 
-		// Check if the phone_number already exists
-		const existingUserPhone = await User.findOne({
-			phone_number: trimmedPhoneNumber,
-		});
-		if (existingUserPhone) {
-			return res
-				.status(400)
-				.json({ error: "User with this phone number already exists" });
-		}
-		// Check if the username already exists
-		const existingUsername = await User.findOne({
-			username: trimmedUsername,
-		});
-		if (existingUsername) {
-			return res
-				.status(400)
-				.json({ error: "User with this username already exists" });
-		}
+        // Check if the phone_number already exists
+        const existingUserPhone = await User.findOne({
+            phone_number: trimmedPhoneNumber,
+        });
+        if (existingUserPhone) {
+            return res
+                .status(400)
+                .json({ error: "User with this phone number already exists" });
+        }
+        // Check if the username already exists
+        const existingUsername = await User.findOne({
+            username: trimmedUsername,
+        });
+        if (existingUsername) {
+            return res
+                .status(400)
+                .json({ error: "User with this username already exists" });
+        }
 
-		// Hash the password before saving
-		const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
+        // Hash the password before saving
+        const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
 
-		// Create a new user
-		const newUser = new User({
-			name: trimmedName,
-			username: trimmedUsername,
-			email: trimmedEmail,
-			phone_number: trimmedPhoneNumber,
-			role: trimmedRole,
-			password: hashedPassword,
-		});
+        // Create a new user
+        const newUser = new User({
+            name: trimmedName,
+            username: trimmedUsername,
+            email: trimmedEmail,
+            phone_number: trimmedPhoneNumber,
+            role: trimmedRole,
+            password: hashedPassword,
+        });
 
-		// Save the new user to the database
-		await newUser.save();
+        // Save the new user to the database
+        await newUser.save();
 
-		// Return a success message
-		res.status(201).json({ message: "User created successfully" });
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({
-			message: "Failed to create user",
-			error: error,
-		});
-	}
+        // Return a success message
+        res.status(201).json({ message: "User created successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Failed to create user",
+            error: error,
+        });
+    }
 };
 
 const login = async (req, res) => {
-	const { username, email, phone_number, password } = req.body;
+    const { username, email, phone_number, password } = req.body;
 
-	const trimmedUsername = username?.trim().toLowerCase();
-	const trimmedEmail = email?.trim().toLowerCase();
-	const trimmedPhoneNumber = phone_number?.trim();
-	const trimmedPassword = password.trim();
+    const trimmedUsername = username?.trim().toLowerCase();
+    const trimmedEmail = email?.trim().toLowerCase();
+    const trimmedPhoneNumber = phone_number?.trim();
+    const trimmedPassword = password.trim();
 
-	if ((!email && !phone_number && !trimmedUsername) || !password) {
-		return res.status(400).json({
-			error: "(Email or phone number or username) and password are required",
-		});
-	}
+    if ((!email && !phone_number && !trimmedUsername) || !password) {
+        return res.status(400).json({
+            error: "(Email or phone number or username) and password are required",
+        });
+    }
 
-	try {
-		const user = await User.findOne({
-			$or: [{ email }, { phone_number }, { trimmedUsername }],
-		});
-		if (!user) {
-			return res.status(400).json({ error: "Invalid credentials" });
-		}
+    try {
+        const user = await User.findOne({
+            $or: [{ email }, { phone_number }, { trimmedUsername }],
+        });
+        if (!user) {
+            return res.status(400).json({ error: "Invalid credentials" });
+        }
 
-		console.log(user);
+        console.log(user);
 
-		const isMatch = await bcrypt.compare(password, user.password);
-		if (!isMatch) {
-			return res.status(400).json({ error: "Invalid credentials" });
-		}
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: "Invalid credentials" });
+        }
 
-		const token = jwt.sign(
-			{ id: user._id, role: user.role, username: user.trimmedUsername },
-			process.env.JWT_SECRET,
-			{ expiresIn: "1h" }
-		);
+        const token = jwt.sign(
+            {
+                userId: user._id,
+                role: user.role,
+                username: user.trimmedUsername,
+                tenantId: user.tenantId,
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: "1h" }
+        );
 
-		res.status(200).json({
-			message: "Login successful",
-			token: token,
-			userId: user._id,
-		});
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ message: "Login failed" });
-	}
+        res.status(200).json({
+            message: "Login successful",
+            token: token,
+            userId: user._id,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Login failed" });
+    }
 };
 
 const getUserById = async (req, res) => {
-	try {
-		const { id } = req.params; // Extract user ID from request parameters
-		const user = await User.findById(id).select("-password"); // Exclude password field
+    try {
+        const { id } = req.params; // Extract user ID from request parameters
+        const user = await User.findById(id).select("-password"); // Exclude password field
 
-		if (!user) {
-			return res
-				.status(404)
-				.json({ success: false, message: "User not found" });
-		}
+        if (!user) {
+            return res
+                .status(404)
+                .json({ success: false, message: "User not found" });
+        }
 
-		res.status(200).json({ success: true, user });
-	} catch (error) {
-		console.error("Error fetching user:", error);
-		res.status(500).json({
-			success: false,
-			message: "Internal server error",
-		});
-	}
+        res.status(200).json({ success: true, user });
+    } catch (error) {
+        console.error("Error fetching user:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
 };
 
 const getUserByUsername = async (req, res) => {
-	try {
-		const { username } = req.params; // Extract user ID from request parameters
-		const user = await User.findOne({ username: username }).select(
-			"-password"
-		); // Exclude password field
+    try {
+        const { username } = req.params; // Extract user ID from request parameters
+        const user = await User.findOne({ username: username }).select(
+            "-password"
+        ); // Exclude password field
 
-		if (!user) {
-			return res
-				.status(404)
-				.json({ success: false, message: "User not found" });
-		}
+        if (!user) {
+            return res
+                .status(404)
+                .json({ success: false, message: "User not found" });
+        }
 
-		res.status(200).json({ success: true, user });
-	} catch (error) {
-		console.error("Error fetching user:", error);
-		res.status(500).json({
-			success: false,
-			message: "Internal server error",
-		});
-	}
+        res.status(200).json({ success: true, user });
+    } catch (error) {
+        console.error("Error fetching user:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
 };
 
 const updateUser = async (req, res) => {
-	try {
-		const { id } = req.params; // Extract user ID from request parameters
-		const updates = req.body; // Get update fields from request body
-		console.log(updates);
+    try {
+        const { id } = req.params; // Extract user ID from request parameters
+        const updates = req.body; // Get update fields from request body
+        console.log(updates);
 
-	
-		
-		
-		if (updates.password) {
-			return res.status(400).json({
-				success: false,
-				message: "Password cannot be updated here",
-			});
-		}
+        if (updates.password) {
+            return res.status(400).json({
+                success: false,
+                message: "Password cannot be updated here",
+            });
+        }
 
-		if (updates._id) {
-			return res.status(400).json({
-				success: false,
-				message: "_id cannot be updated as it is immutable",
-			});
-		}
+        if (updates._id) {
+            return res.status(400).json({
+                success: false,
+                message: "_id cannot be updated as it is immutable",
+            });
+        }
 
-		// Find user by ID and update
-		const updatedUser = await User.findByIdAndUpdate(
-			id,
-			{ ...updates, updated_at: Date.now() }, // Set updated timestamp
-			{ new: true, runValidators: true, select: "-password" } // Return updated document & exclude password
-		);
+        // Find user by ID and update
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { ...updates, updated_at: Date.now() }, // Set updated timestamp
+            { new: true, runValidators: true, select: "-password" } // Return updated document & exclude password
+        );
 
-		if (!updatedUser) {
-			return res
-				.status(404)
-				.json({ success: false, message: "User not found" });
-		}
+        if (!updatedUser) {
+            return res
+                .status(404)
+                .json({ success: false, message: "User not found" });
+        }
 
-		res.status(200).json({
-			success: true,
-			message: "User updated successfully",
-			user: updatedUser,
-		});
-	} catch (error) {
-		console.error("Error updating user:", error);
-		res.status(500).json({
-			success: false,
-			message: "Internal server error",
-		});
-	}
+        res.status(200).json({
+            success: true,
+            message: "User updated successfully",
+            user: updatedUser,
+        });
+    } catch (error) {
+        console.error("Error updating user:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
 };
 
 const deleteUser = async (req, res) => {
-	const { userId } = req.params;
+    const { userId } = req.params;
 
-	try {
-		// Check if user exists
-		const user = await User.findById(userId);
+    try {
+        // Check if user exists
+        const user = await User.findById(userId);
 
-		if (!user) {
-			return res.status(404).json({ message: "User not found" });
-		}
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
 
-		// Delete related data (exam participations, saved questions)
-		// await ExamParticipation.deleteMany({ student_id: userId });
-		// await SavedQuestion.deleteMany({ user_id: userId });
+        if (user.role == "hod") {
+            const tenant = await Tenant.findById(user.tenantId);
+            if (!tenant) {
+                return res.status(404).json({ message: "Tenant not found" });
+            } else {
+                tenant.owner = null;
+                await tenant.save();
+            }
+        }
+        await User.findByIdAndDelete(userId);
 
-		// Delete the user
-		await User.findByIdAndDelete(userId);
-
-		res.status(200).json({ message: "User deleted successfully" });
-	} catch (err) {
-		console.error(err);
-		res.status(500).json({ message: "Error deleting user" });
-	}
+        res.status(200).json({ message: "User deleted successfully" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Error deleting user" });
+    }
 };
 
 export {
-	signup,
-	login,
-	getUserById,
-	updateUser,
-	deleteUser,
-	getUserByUsername,
+    signup,
+    login,
+    getUserById,
+    updateUser,
+    deleteUser,
+    getUserByUsername,
 };

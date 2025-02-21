@@ -2,6 +2,7 @@ import express from "express";
 import authRoutes from "./routes/user.routes.mjs";
 import subjectRoutes from "./routes/subject.routes.mjs";
 import questionsRoutes from "./routes/question.route.mjs";
+import tenantRoutes from "./routes/tenant.route.mjs";
 import connectDB from "./db/database.mjs";
 // import interactionRoutes from "./routes/interaction.routes.mjs";
 

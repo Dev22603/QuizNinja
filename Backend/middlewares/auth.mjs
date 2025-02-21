@@ -11,6 +11,7 @@ export const authenticate = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log(decoded);
         
         // Fetch full user details from DB to get tenantId
         const user = await User.findById(decoded.userId);

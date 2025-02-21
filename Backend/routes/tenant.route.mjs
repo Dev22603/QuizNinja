@@ -8,7 +8,7 @@ import {
 	getAllTenants,
 	deleteTenant,
 	updateTenant,
-} from "../controllers/tenantController.js"; // Ensure the correct path
+} from "../controllers/tenant.controller.mjs"; // Ensure the correct path
 
 const router = express.Router();
 

@@ -6,7 +6,7 @@ const tenantSchema = new mongoose.Schema(
 		owner: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "User",
-			required: true,
+			required: false,
 		},
 		contact_email: { type: String, trim: true }, // Optional contact email
 		contact_phone: { type: String, trim: true }, // Optional phone number
