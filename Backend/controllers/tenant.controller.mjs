@@ -17,6 +17,8 @@ const registerTenant = async (req, res) => {
 
         // Check if username is already taken
         const existingUser = await User.findOne({ username });
+        console.log(existingUser);
+        
         if (existingUser) {
             return res
                 .status(400)
