@@ -8,7 +8,6 @@ import Tenant from "../models/tenant.model.mjs";
 import { REGEX, ROLES } from "../constants/constants.mjs";
 
 // Configure Multer to store file in memory
-const upload = multer({ storage: multer.memoryStorage() });
 
 const registerTeacher = async (req, res) => {
 	const { name, email, phone_number, password } = req.body;
@@ -226,6 +225,179 @@ const registerMultipleTeachers = async (req, res) => {
 		res.status(500).json({ error: "Internal Server Error" });
 	}
 };
+const registerStudent = async (req, res) => {
+	const { name, email, phone_number, password } = req.body;
+	if (!name || !email || !phone_number || !password) {
+		return res.status(400).json({ message: "Please fill in all fields" });
+	}
+
+	// Trim inputs
+	const trimmedName = name.trim();
+	const trimmedEmail = email.trim().toLowerCase();
+	const trimmedPhoneNumber = phone_number.trim();
+	const trimmedPassword = password.trim();
+
+	const tenantId = req.user.tenantId;
+
+	// Validate email
+	if (!REGEX.EMAIL.test(trimmedEmail)) {
+		return res.status(400).json({ error: "Invalid email format" });
+	}
+
+	// Validate phone number
+	if (!REGEX.PHONE.test(trimmedPhoneNumber)) {
+		return res
+			.status(400)
+			.json({ error: "Invalid phone number. Must be 10 digits." });
+	}
+
+	// Hash the password before saving
+	const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
+
+	// Create a new Student
+	const newStudent = await User.create({
+		name: trimmedName,
+		email: trimmedEmail,
+		phone_number: trimmedPhoneNumber,
+		role: ROLES.STUDENT,
+		tenantId: tenantId,
+		password: hashedPassword,
+	});
+
+	res.status(201).json({ message: "Student created successfully" });
+};
+
+const registerMultipleStudents = async (req, res) => {
+	try {
+		if (!req.file) {
+			return res
+				.status(400)
+				.json({ error: "Please upload an Excel file" });
+		}
+
+		const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+		const sheetName = workbook.SheetNames[0];
+		const sheet = workbook.Sheets[sheetName];
+		const studentsData = xlsx.utils.sheet_to_json(sheet);
+
+		if (!studentsData.length) {
+			return res.status(400).json({ error: "The Excel file is empty" });
+		}
+
+		const tenantId = req.user.tenantId;
+		const studentsToCreate = [];
+		const passwordHashPromises = [];
+		const skippedRows = [];
+		const uniqueEntries = new Set();
+		const allEmails = new Set();
+		const allPhoneNumbers = new Set();
+
+		for (const row of studentsData) {
+			if (row.email) {
+				const email = row.email.trim().toLowerCase();
+				if (allEmails.has(email)) continue;
+				allEmails.add(email);
+			}
+			if (row.phone_number) {
+				const phone = row.phone_number.toString().trim();
+				if (allPhoneNumbers.has(phone)) continue;
+				allPhoneNumbers.add(phone);
+			}
+		}
+
+		const existingUsers = await User.find({
+			tenantId,
+			$or: [
+				{ email: { $in: [...allEmails] } },
+				{ phone_number: { $in: [...allPhoneNumbers] } },
+			],
+		});
+
+		const existingUsersMap = new Map();
+		for (const user of existingUsers) {
+			existingUsersMap.set(
+				user.email,
+				"Email already exists in database"
+			);
+			existingUsersMap.set(
+				user.phone_number,
+				"Phone number already exists in database"
+			);
+		}
+
+		for (const row of studentsData) {
+			let { name, email, phone_number, password } = row;
+
+			const trimmedName = name?.trim();
+			const trimmedEmail = email?.trim().toLowerCase();
+			const trimmedPhoneNumber = phone_number?.toString().trim();
+			const trimmedPassword = password?.trim();
+
+			if (
+				!trimmedName ||
+				!trimmedEmail ||
+				!trimmedPhoneNumber ||
+				!trimmedPassword
+			) {
+				skippedRows.push({ row, reason: "Missing required fields" });
+				continue;
+			}
+
+			if (!REGEX.EMAIL.test(trimmedEmail)) {
+				skippedRows.push({ row, reason: "Invalid email format" });
+				continue;
+			}
+
+			if (!REGEX.PHONE.test(trimmedPhoneNumber)) {
+				skippedRows.push({ row, reason: "Invalid phone number" });
+				continue;
+			}
+
+			const uniqueKey = `${trimmedEmail}|${trimmedPhoneNumber}`;
+			if (
+				existingUsersMap.has(trimmedEmail) ||
+				existingUsersMap.has(trimmedPhoneNumber) ||
+				uniqueEntries.has(uniqueKey)
+			) {
+				skippedRows.push({
+					row,
+					reason: "Duplicate entry or already exists",
+				});
+				continue;
+			}
+			uniqueEntries.add(uniqueKey);
+
+			const hashPromise = bcrypt.hash(trimmedPassword, 10);
+			passwordHashPromises.push(hashPromise);
+
+			studentsToCreate.push({
+				name: trimmedName,
+				email: trimmedEmail,
+				phone_number: trimmedPhoneNumber,
+				role: ROLES.STUDENT,
+				tenantId: tenantId,
+			});
+		}
+
+		const hashedPasswords = await Promise.all(passwordHashPromises);
+		studentsToCreate.forEach((student, index) => {
+			student.password = hashedPasswords[index];
+		});
+
+		if (studentsToCreate.length > 0) {
+			await User.insertMany(studentsToCreate);
+		}
+
+		res.status(201).json({
+			message: `${studentsToCreate.length} unique students registered successfully.`,
+			skipped: skippedRows.length,
+			skippedDetails: skippedRows,
+		});
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal Server Error" });
+	}
+};
 
 const login = async (req, res) => {
 	const { username, email, phone_number, password } = req.body;
@@ -305,21 +477,44 @@ const getUserById = async (req, res) => {
 		});
 	}
 };
-
-const getUserByUsername = async (req, res) => {
+const getStudents = async (req, res) => {
 	try {
-		const { username } = req.params; // Extract user ID from request parameters
-		const user = await User.findOne({ username: username }).select(
-			"-password"
-		); // Exclude password field
+		const tenantId = req.user.tenantId;
+		const users = await User.find({
+			role: ROLES.STUDENT,
+			tenantId: tenantId,
+		}).select("-password"); // Exclude password field
 
-		if (!user) {
+		if (!users) {
 			return res
 				.status(404)
-				.json({ success: false, message: "User not found" });
+				.json({ success: false, message: "Students not found" });
 		}
 
-		res.status(200).json({ success: true, user });
+		res.status(200).json({ success: true, users });
+	} catch (error) {
+		console.error("Error fetching user:", error);
+		res.status(500).json({
+			success: false,
+			message: "Internal server error",
+		});
+	}
+};
+const getTeachers = async (req, res) => {
+	try {
+		const tenantId = req.user.tenantId;
+		const users = await User.find({
+			role: ROLES.TEACHER,
+			tenantId: tenantId,
+		}).select("-password"); // Exclude password field
+
+		if (!users) {
+			return res
+				.status(404)
+				.json({ success: false, message: "Teachers not found" });
+		}
+
+		res.status(200).json({ success: true, users });
 	} catch (error) {
 		console.error("Error fetching user:", error);
 		res.status(500).json({
@@ -329,11 +524,35 @@ const getUserByUsername = async (req, res) => {
 	}
 };
 
+// const getUserByUsername = async (req, res) => {
+// 	try {
+// 		const { username } = req.params; // Extract user ID from request parameters
+// 		const user = await User.findOne({ username: username }).select(
+// 			"-password"
+// 		); // Exclude password field
+
+// 		if (!user) {
+// 			return res
+// 				.status(404)
+// 				.json({ success: false, message: "User not found" });
+// 		}
+
+// 		res.status(200).json({ success: true, user });
+// 	} catch (error) {
+// 		console.error("Error fetching user:", error);
+// 		res.status(500).json({
+// 			success: false,
+// 			message: "Internal server error",
+// 		});
+// 	}
+// };
+
 const updateUser = async (req, res) => {
 	try {
 		const { id } = req.params; // Extract user ID from request parameters
 		const updates = req.body; // Get update fields from request body
 		console.log(updates);
+		const tenantId = req.user.tenantId;
 
 		if (updates.password) {
 			return res.status(400).json({
@@ -342,16 +561,19 @@ const updateUser = async (req, res) => {
 			});
 		}
 
-		if (updates._id) {
-			return res.status(400).json({
-				success: false,
-				message: "_id cannot be updated as it is immutable",
-			});
-		}
+		// if (updates._id) {
+		// 	return res.status(400).json({
+		// 		success: false,
+		// 		message: "_id cannot be updated as it is immutable",
+		// 	});
+		// }
 
 		// Find user by ID and update
-		const updatedUser = await User.findByIdAndUpdate(
-			id,
+		const updatedUser = await User.findOneAndUpdate(
+			{
+				_id: id,
+				tenantId: tenantId,
+			},
 			{ ...updates, updated_at: Date.now() }, // Set updated timestamp
 			{ new: true, runValidators: true, select: "-password" } // Return updated document & exclude password
 		);
@@ -378,25 +600,24 @@ const updateUser = async (req, res) => {
 
 const deleteUser = async (req, res) => {
 	const { userId } = req.params;
+	const tenantId = req.user.tenantId;
 
 	try {
 		// Check if user exists
-		const user = await User.findById(userId);
+		const user = await User.findOneAndDelete({
+			_id: userId,
+			tenantId: tenantId,
+		});
 
 		if (!user) {
 			return res.status(404).json({ message: "User not found" });
 		}
 
-		if (user.role == "hod") {
-			const tenant = await Tenant.findById(user.tenantId);
-			if (!tenant) {
-				return res.status(404).json({ message: "Tenant not found" });
-			} else {
-				tenant.owner = null;
-				await tenant.save();
-			}
+		if (user.role == ROLES.HOD) {
+			const tenant = await Tenant.findById(tenantId);
+			tenant.owner = null;
+			await tenant.save();
 		}
-		await User.findByIdAndDelete(userId);
 
 		res.status(200).json({ message: "User deleted successfully" });
 	} catch (err) {
@@ -408,9 +629,12 @@ const deleteUser = async (req, res) => {
 export {
 	registerTeacher,
 	registerMultipleTeachers,
+	registerStudent,
+	registerMultipleStudents,
 	login,
 	getUserById,
 	updateUser,
 	deleteUser,
-	getUserByUsername,
+	getStudents,
+	getTeachers,
 };

@@ -4,6 +4,7 @@ import Subject from "../models/subject.model.mjs";
 const createSubject = async (req, res) => {
 	try {
 		const { subject_name, subject_code, subject_description } = req.body;
+		const tenantId = req.user.tenantId;
 
 		if (!subject_name || !subject_name.trim()) {
 			return res.status(400).json({ error: "Subject name is required." });
@@ -22,9 +23,10 @@ const createSubject = async (req, res) => {
 		}
 
 		const newSubject = new Subject({
-			subject_name,
-			subject_code,
-			subject_description,
+			subject_name: subject_name,
+			subject_code: subject_code,
+			subject_description: subject_description,
+			tenantId: tenantId,
 		});
 
 		await newSubject.save();
@@ -33,6 +35,8 @@ const createSubject = async (req, res) => {
 			newSubject,
 		});
 	} catch (error) {
+		console.log(error);
+
 		res.status(500).json({
 			error: "An unexpected error occurred. Please try again later.",
 		});
@@ -42,7 +46,8 @@ const createSubject = async (req, res) => {
 // Get all subjects
 const getAllSubjects = async (req, res) => {
 	try {
-		const subjects = await Subject.find();
+		const tenantId = req.user.tenantId;
+		const subjects = await Subject.find({ tenantId: tenantId });
 		res.json(subjects);
 	} catch (error) {
 		res.status(500).json({ error: error.message });
@@ -53,9 +58,11 @@ const getAllSubjects = async (req, res) => {
 const getSubjectBySubjectCode = async (req, res) => {
 	try {
 		console.log(req.params.code);
+		const tenantId = req.user.tenantId;
 
 		const subject = await Subject.findOne({
 			subject_code: req.params.code,
+			tenantId: tenantId,
 		});
 
 		if (!subject)
@@ -71,6 +78,7 @@ const getSubjectBySubjectCode = async (req, res) => {
 const updateSubject = async (req, res) => {
 	try {
 		const { subject_name, subject_code, subject_description } = req.body;
+		const tenantId = req.user.tenantId;
 
 		if (!subject_name || !subject_name.trim()) {
 			return res.status(400).json({ error: "Subject name is required." });
@@ -78,6 +86,7 @@ const updateSubject = async (req, res) => {
 		const updatedSubject = await Subject.findOneAndUpdate(
 			{
 				subject_code: req.params.code,
+				tenantId: tenantId,
 			},
 			{ subject_name, subject_code, subject_description },
 			{ new: true }
@@ -95,8 +104,10 @@ const updateSubject = async (req, res) => {
 // Delete a subject
 const deleteSubject = async (req, res) => {
 	try {
+		const tenantId = req.user.tenantId;
 		const subject = await Subject.findOneAndDelete({
 			subject_code: req.params.code,
+			tenantId: tenantId,
 		});
 
 		if (!subject)
