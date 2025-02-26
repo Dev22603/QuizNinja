@@ -1,6 +1,6 @@
 # QuizNinja - Backend
 
-![QuizNinja Logo](https://your-logo-url.com/logo.png)
+![QuizNinja Logo](logo-no-background.svg)
 
 ## 🚀 Introduction
 QuizNinja is a robust and scalable online examination platform designed to streamline quiz and exam management for educational institutions. The backend is built using **Node.js, Express.js, and MongoDB**, offering a secure and efficient REST API to handle users, questions, exams, and more.
