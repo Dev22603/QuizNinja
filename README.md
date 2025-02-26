@@ -5,21 +5,7 @@
 ## 🚀 Introduction
 QuizNinja is a robust and scalable online examination platform designed to streamline quiz and exam management for educational institutions. The backend is built using **Node.js, Express.js, and MongoDB**, offering a secure and efficient REST API to handle users, questions, exams, and more.
 
-## 📁 Project Structure
-```
-└── dev22603-quizninja/
-    └── Backend/
-        ├── app.mjs
-        ├── index.mjs
-        ├── package.json
-        ├── constants/
-        ├── controllers/
-        ├── db/
-        ├── middlewares/
-        ├── models/
-        ├── routes/
-        ├── utils/
-```
+
 
 ### Key Directories:
 - **controllers/**: Handles business logic for various entities (users, exams, questions, etc.).
