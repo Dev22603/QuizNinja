@@ -1,23 +1,28 @@
 import mongoose from "mongoose";
+import { ROLES } from "../constants/constants.mjs"; // Import roles from constants
 
 const userSchema = new mongoose.Schema(
 	{
 		tenantId: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "Tenant",
-			required: true, // Ensures each user belongs to a coaching center
+			required: false, // Change to "true" if every user must belong to a tenant
 		},
 		name: { type: String, required: true, minlength: 2 },
 		username: {
 			type: String,
-			required: true,
-			unique: true,
+			required: false, // Ensure it's always provided if it's unique
+			default:"",
 			lowercase: true,
-			match: [/^[a-z_]+$/, "Username can only contain lowercase letters and underscores"],
+			match: [
+				/^[a-z_]*$/,
+				"Username can only contain lowercase letters and underscores",
+			],
 		},
 		role: {
 			type: String,
-			enum: ["student", "teacher", "hod", "admin"],
+			enum: Object.values(ROLES), // Use predefined roles
+			default: ROLES.STUDENT, // Use constant
 			required: true,
 		},
 		email: {
@@ -26,7 +31,7 @@ const userSchema = new mongoose.Schema(
 			unique: true,
 			match: [
 				/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/,
-				"Please fill a valid email address",
+				"Please provide a valid email address",
 			],
 		},
 		phone_number: {
@@ -39,11 +44,9 @@ const userSchema = new mongoose.Schema(
 			required: true,
 			minlength: 8,
 		},
-		created_at: { type: Date, default: Date.now },
-		updated_at: { type: Date, default: Date.now },
 	},
 	{
-		timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+		timestamps: true, // Automatically handles createdAt & updatedAt
 	}
 );
 

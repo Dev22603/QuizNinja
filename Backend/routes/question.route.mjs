@@ -9,6 +9,7 @@ import {
 	createMultipleQuestions
 } from "../controllers/question.controller.mjs";
 import { authenticate, authorize } from "../middlewares/auth.mjs";
+import { ROLES } from "../constants/constants.mjs";
 
 const router = express.Router();
 
@@ -16,14 +17,14 @@ const router = express.Router();
 router.post(
 	"/questions/create",
 	authenticate,
-	authorize(["hod", "teacher"]),
+	authorize([ROLES.HOD, ROLES.TEACHER]),
 	createQuestion
 );
 // Create multiple questions (only HOD & Teachers)
 router.post(
     "/questions/create_multiple",
     authenticate,
-    authorize(["hod", "teacher"]),
+    authorize([ROLES.HOD, ROLES.TEACHER]),
     createMultipleQuestions
 );
 
@@ -44,14 +45,14 @@ router.get("/questions/teacher/:username", authenticate, getQuestionsByTeacher);
 router.put(
 	"/questions/:id",
 	authenticate,
-	authorize(["hod", "teacher"]),
+	authorize([ROLES.HOD, ROLES.TEACHER]),
 	updateQuestion
 );
 // Delete a question by ID (only HOD and Teachers)
 router.delete(
 	"/questions/:id",
 	authenticate,
-	authorize(["hod", "teacher"]),
+	authorize([ROLES.HOD, ROLES.TEACHER]),
 	deleteQuestion
 );
 

@@ -17,6 +17,7 @@ const createQuestion = async (req, res) => {
 			correct_option_ids,
 			difficulty,
 		} = req.body;
+		const tenantId = req.user.tenantId;
 
 		const user = req.user;
 
@@ -73,15 +74,21 @@ const createQuestion = async (req, res) => {
 		if (!subject_id)
 			return res.status(404).json({ error: "Subject not found" });
 
+		// Create an options object with a 0-based ID
+		const options_object = options.map((text, index) => ({
+			id: index,
+			text: text,
+		}));
 		const newQuestion = new Question({
-			question,
-			subject_id,
-			created_by,
-			reference_book_or_source,
-			image_url,
-			options,
-			correct_option_ids,
-			difficulty,
+			question: question,
+			subject_id: subject_id,
+			created_by: created_by,
+			reference_book_or_source: reference_book_or_source,
+			image_url: image_url,
+			options: options_object,
+			correct_option_ids: correct_option_ids,
+			difficulty: difficulty,
+			tenantId: tenantId,
 		});
 
 		await newQuestion.save();
