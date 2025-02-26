@@ -25,14 +25,15 @@ QuizNinja is a robust and scalable online examination platform designed to strea
 - **bcryptjs** - Password hashing
 - **Dotenv** - Environment variables management
 
-## 🌟 Features
-\- ✅ User authentication (JWT-based login/logout)
-\- ✅ Multi-role access control (Admin, Teacher, Student)
-\- ✅ Question and exam management
-\- ✅ Subject-wise question categorization
-\- ✅ Secure exam attempts with progress tracking
-\- ✅ Scoring and result calculation
-\- ✅ File upload support for bulk questions
+## 🌟 Features  
+✅ User authentication (JWT-based login/logout) <br>
+✅ Multi-role access control (Admin, Teacher, Student) <br>
+✅ Question and exam management <br>
+✅ Subject-wise question categorization <br>
+✅ Secure exam attempts with progress tracking <br>
+✅ Scoring and result calculation <br>
+✅ File upload support for bulk questions  
+
 
 
 ## 🚀 Getting Started
