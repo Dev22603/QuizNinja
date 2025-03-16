@@ -10,11 +10,11 @@
 from utils import transform
 from utils import imutils
 from scipy.spatial import distance as dist
-from matplotlib.patches import Polygon
-import utils.polygon_interacter as poly_i
+# from matplotlib.patches import Polygon
+# import utils.polygon_interacter as poly_i
 import numpy as np
 import itertools
-import math
+from math import acos
 import cv2
 from pylsd.lsd import lsd
 
@@ -54,7 +54,7 @@ class DocScanner(object):
     def angle_between_vectors_degrees(self, u, v):
         """Returns the angle between two vectors in degrees"""
         return np.degrees(
-            math.acos(np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))))
+            acos(np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))))
 
     def get_angle(self, p1, p2, p3):
         """
