@@ -13,7 +13,6 @@ from scipy.spatial import distance as dist
 from matplotlib.patches import Polygon
 import utils.polygon_interacter as poly_i
 import numpy as np
-import matplotlib.pyplot as plt
 import itertools
 import math
 import cv2
@@ -95,15 +94,6 @@ class DocScanner(object):
         """
         lines = lsd(img)
 
-        # massages the output from LSD
-        # LSD operates on edges. One "line" has 2 edges, and so we need to combine the edges back into lines
-        # 1. separate out the lines into horizontal and vertical lines.
-        # 2. Draw the horizontal lines back onto a canvas, but slightly thicker and longer.
-        # 3. Run connected-components on the new canvas
-        # 4. Get the bounding box for each component, and the bounding box is final line.
-        # 5. The ends of each line is a corner
-        # 6. Repeat for vertical lines
-        # 7. Draw all the final lines onto another canvas. Where the lines overlap are also corners
 
         corners = []
         if lines is not None:
@@ -264,6 +254,7 @@ class DocScanner(object):
         return screenCnt.reshape(4, 2)
 
     def interactive_get_contour(self, screenCnt, rescaled_image):
+        import matplotlib.pyplot as plt
         poly = Polygon(screenCnt, animated=True, fill=False,
                        color="yellow", linewidth=5)
         fig, ax = plt.subplots()
