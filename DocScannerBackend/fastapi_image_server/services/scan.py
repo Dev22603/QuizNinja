@@ -253,21 +253,21 @@ class DocScanner(object):
 
         return screenCnt.reshape(4, 2)
 
-    def interactive_get_contour(self, screenCnt, rescaled_image):
-        import matplotlib.pyplot as plt
-        poly = Polygon(screenCnt, animated=True, fill=False,
-                       color="yellow", linewidth=5)
-        fig, ax = plt.subplots()
-        ax.add_patch(poly)
-        ax.set_title(('Drag the corners of the box to the corners of the document. \n'
-                      'Close the window when finished.'))
-        p = poly_i.PolygonInteractor(ax, poly)
-        plt.imshow(rescaled_image)
-        plt.show()
+    # def interactive_get_contour(self, screenCnt, rescaled_image):
+    #     import matplotlib.pyplot as plt
+    #     poly = Polygon(screenCnt, animated=True, fill=False,
+    #                    color="yellow", linewidth=5)
+    #     fig, ax = plt.subplots()
+    #     ax.add_patch(poly)
+    #     ax.set_title(('Drag the corners of the box to the corners of the document. \n'
+    #                   'Close the window when finished.'))
+    #     p = poly_i.PolygonInteractor(ax, poly)
+    #     plt.imshow(rescaled_image)
+    #     plt.show()
 
-        new_points = p.get_poly_points()[:4]
-        new_points = np.array([[p] for p in new_points], dtype="int32")
-        return new_points.reshape(4, 2)
+    #     new_points = p.get_poly_points()[:4]
+    #     new_points = np.array([[p] for p in new_points], dtype="int32")
+    #     return new_points.reshape(4, 2)
 
     def scan(self, image_path, output_path):
         print("Proccessed ")
@@ -287,8 +287,8 @@ class DocScanner(object):
         # get the contour of the document
         screenCnt = self.get_contour(rescaled_image)
 
-        if self.interactive:
-            screenCnt = self.interactive_get_contour(screenCnt, rescaled_image)
+        # if self.interactive:
+        #     screenCnt = self.interactive_get_contour(screenCnt, rescaled_image)
 
         # apply the perspective transformation
         warped = transform.four_point_transform(orig, screenCnt * ratio)
