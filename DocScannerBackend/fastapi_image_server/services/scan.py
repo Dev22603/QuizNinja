@@ -10,11 +10,12 @@
 from utils import transform
 from utils import imutils
 from scipy.spatial import distance as dist
-# from matplotlib.patches import Polygon
-# import utils.polygon_interacter as poly_i
+from matplotlib.patches import Polygon
+import utils.polygon_interacter as poly_i
 import numpy as np
+import matplotlib.pyplot as plt
 import itertools
-from math import acos
+import math
 import cv2
 from pylsd.lsd import lsd
 
@@ -54,7 +55,7 @@ class DocScanner(object):
     def angle_between_vectors_degrees(self, u, v):
         """Returns the angle between two vectors in degrees"""
         return np.degrees(
-            acos(np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))))
+            math.acos(np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))))
 
     def get_angle(self, p1, p2, p3):
         """
@@ -94,6 +95,15 @@ class DocScanner(object):
         """
         lines = lsd(img)
 
+        # massages the output from LSD
+        # LSD operates on edges. One "line" has 2 edges, and so we need to combine the edges back into lines
+        # 1. separate out the lines into horizontal and vertical lines.
+        # 2. Draw the horizontal lines back onto a canvas, but slightly thicker and longer.
+        # 3. Run connected-components on the new canvas
+        # 4. Get the bounding box for each component, and the bounding box is final line.
+        # 5. The ends of each line is a corner
+        # 6. Repeat for vertical lines
+        # 7. Draw all the final lines onto another canvas. Where the lines overlap are also corners
 
         corners = []
         if lines is not None:
@@ -253,21 +263,20 @@ class DocScanner(object):
 
         return screenCnt.reshape(4, 2)
 
-    # def interactive_get_contour(self, screenCnt, rescaled_image):
-    #     import matplotlib.pyplot as plt
-    #     poly = Polygon(screenCnt, animated=True, fill=False,
-    #                    color="yellow", linewidth=5)
-    #     fig, ax = plt.subplots()
-    #     ax.add_patch(poly)
-    #     ax.set_title(('Drag the corners of the box to the corners of the document. \n'
-    #                   'Close the window when finished.'))
-    #     p = poly_i.PolygonInteractor(ax, poly)
-    #     plt.imshow(rescaled_image)
-    #     plt.show()
+    def interactive_get_contour(self, screenCnt, rescaled_image):
+        poly = Polygon(screenCnt, animated=True, fill=False,
+                       color="yellow", linewidth=5)
+        fig, ax = plt.subplots()
+        ax.add_patch(poly)
+        ax.set_title(('Drag the corners of the box to the corners of the document. \n'
+                      'Close the window when finished.'))
+        p = poly_i.PolygonInteractor(ax, poly)
+        plt.imshow(rescaled_image)
+        plt.show()
 
-    #     new_points = p.get_poly_points()[:4]
-    #     new_points = np.array([[p] for p in new_points], dtype="int32")
-    #     return new_points.reshape(4, 2)
+        new_points = p.get_poly_points()[:4]
+        new_points = np.array([[p] for p in new_points], dtype="int32")
+        return new_points.reshape(4, 2)
 
     def scan(self, image_path, output_path):
         print("Proccessed ")
@@ -287,8 +296,8 @@ class DocScanner(object):
         # get the contour of the document
         screenCnt = self.get_contour(rescaled_image)
 
-        # if self.interactive:
-        #     screenCnt = self.interactive_get_contour(screenCnt, rescaled_image)
+        if self.interactive:
+            screenCnt = self.interactive_get_contour(screenCnt, rescaled_image)
 
         # apply the perspective transformation
         warped = transform.four_point_transform(orig, screenCnt * ratio)

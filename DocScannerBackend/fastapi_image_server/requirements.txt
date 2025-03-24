@@ -7,3 +7,5 @@ matplotlib
 numpy
 opencv-python
 scipy
+python-multipart
+pylsd-nova
