@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  node-backend:
+    build:
+      context: ./Backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./Backend/.env
+    depends_on:
+      - fastapi-backend
+
+  fastapi-backend:
+    build:
+      context: ./MCQBackend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./MCQBackend/.env

@@ -1,3 +1,4 @@
+# MCQBackend\services\scan.py
 # USAGE:
 # python scan.py (--images <IMG_DIR> | --image <IMG_PATH>) [-i]
 # For example, to scan a single image with interactive mode:
