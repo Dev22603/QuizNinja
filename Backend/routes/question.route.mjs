@@ -6,10 +6,12 @@ import {
 	getAllQuestions,
 	updateQuestion,
 	deleteQuestion,
-	createMultipleQuestions
+	createMultipleQuestions, 
+	uploadImages
 } from "../controllers/question.controller.mjs";
 import { authenticate, authorize } from "../middlewares/auth.mjs";
 import { ROLES } from "../constants/constants.mjs";
+import { uploadImagesMiddleware } from "../middlewares/upload_image.mjs";
 
 const router = express.Router();
 
@@ -26,6 +28,13 @@ router.post(
     authenticate,
     authorize([ROLES.HOD, ROLES.TEACHER]),
     createMultipleQuestions
+);
+router.post(
+    "/questions/upload_images",
+    authenticate,
+    authorize([ROLES.HOD, ROLES.TEACHER]),
+	uploadImagesMiddleware,
+    uploadImages
 );
 
 // Get all questions (with optional sorting)

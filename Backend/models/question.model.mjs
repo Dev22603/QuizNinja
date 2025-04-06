@@ -23,9 +23,17 @@ const questionSchema = new mongoose.Schema(
 		reference_book_or_source: { type: String, default: "" },
 		image_url: { type: String, default: "" },
 		// Use the OptionSchema as an embedded subdocument
-		options: [optionSchema],
+		options: {
+			type: [optionSchema],
+			validate: {
+				validator: function (arr) {
+					return arr.length === 4;
+				},
+				message: "Exactly 4 options are required.",
+			},
+		},
 		correct_option_ids: { type: [Number], required: true },
-		difficulty: { type: Number, min: 1, max: 5, default: 1 },
+		difficulty: { type: Number, min: 1, max: 3, default: 1 },
 		chapter: { type: String, default: "" },
 	},
 	{ timestamps: true }
