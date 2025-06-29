@@ -20,7 +20,7 @@ const questionSchema = new mongoose.Schema(
 			required: true,
 			ref: "User",
 		},
-		reference_book_or_source: { type: String, default: "" },
+		source: { type: String, default: "" },
 		image_url: { type: String, default: "" },
 		// Use the OptionSchema as an embedded subdocument
 		options: {
@@ -33,7 +33,12 @@ const questionSchema = new mongoose.Schema(
 			},
 		},
 		correct_option_ids: { type: [Number], required: true },
-		difficulty: { type: Number, min: 1, max: 3, default: 1 },
+		difficulty: { 
+			type: String, 
+			enum: ['easy', 'medium', 'hard'], 
+			default: 'easy',
+			lowercase: true
+		},
 		chapter: { type: String, default: "" },
 	},
 	{ timestamps: true }

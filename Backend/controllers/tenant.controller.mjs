@@ -2,6 +2,7 @@ import Tenant from "../models/tenant.model.mjs";
 import User from "../models/user.model.mjs";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import {config} from "../constants/config.mjs";
 
 const registerTenant = async (req, res) => {
     try {
@@ -50,7 +51,7 @@ const registerTenant = async (req, res) => {
         // Generate JWT
         const token = jwt.sign(
             { userId: newHOD._id, tenantId: newTenant._id, role: "hod" },
-            process.env.JWT_SECRET,
+            config.JWT_SECRET,
             { expiresIn: "7d" }
         );
 
