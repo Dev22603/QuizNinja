@@ -6,6 +6,7 @@ import xlsx from "xlsx";
 import User from "../models/user.model.mjs";
 import Tenant from "../models/tenant.model.mjs";
 import { REGEX, ROLES } from "../constants/constants.mjs";
+import {config} from "../constants/config.mjs";
 
 // Configure Multer to store file in memory
 
@@ -442,7 +443,7 @@ const login = async (req, res) => {
 				role: user.role,
 				tenantId: user.tenantId,
 			},
-			process.env.JWT_SECRET,
+			config.JWT_SECRET,
 			{ expiresIn: "1h" }
 		);
 

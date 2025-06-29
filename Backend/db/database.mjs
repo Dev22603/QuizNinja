@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import {config} from "../constants/config.mjs";
 
 dotenv.config();
 
-const dbURI = process.env.MONGODB_URI;
+const dbURI = config.MONGODB_URI;
 console.log(dbURI);
 
 const connectDB = async () => {

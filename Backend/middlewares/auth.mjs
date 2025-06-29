@@ -1,6 +1,7 @@
 // Backend\middlewares\auth.mjs
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.mjs"; // Import User model
+import {config} from "../constants/config.mjs";
 
 export const authenticate = async (req, res, next) => {
     const token = req.headers.authorization?.split(" ")[1];
@@ -10,7 +11,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, config.JWT_SECRET);
         console.log(decoded);
         
         // Fetch full user details from DB to get tenantId
