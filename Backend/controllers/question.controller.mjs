@@ -1,14 +1,135 @@
 import Question from "../models/question.model.mjs";
 import Subject from "../models/subject.model.mjs";
 import User from "../models/user.model.mjs";
+import fs from "fs";
+import { uploadToCloudinary } from "../utils/cloudinary.mjs";
+import McqImage from "../models/mcq_image.model.mjs";
+
+const uploadImages = async (req, res) => {
+	try {
+		if (!req.files || req.files.length === 0) {
+			return res.status(400).json({ error: "No images uploaded." });
+		}
+		const { subject_code } = req.body;
+
+		const imageUrls = [];
+		const created_by = req.user.id;
+		const tenantId = req.user.tenantId;
+		const { _id: subject_id } = await Subject.findOne({
+			subject_code: subject_code,
+		});
+		
+		if (!subject_id)
+			return res.status(404).json({ error: "Subject not found" });
+		
+		for (const file of req.files) {
+			const imageUrl = await uploadToCloudinary(file.path);
+			imageUrls.push(imageUrl);
+			fs.unlinkSync(file.path); // Clean up temp file
+		}
+		
+		console.log(imageUrls)                 
+		const newMcqImage = await McqImage.create({
+			tenantId: tenantId,
+			created_by: created_by,
+			subject_id: subject_id,
+			image_urls: imageUrls,
+		});
+		res.status(200).json({
+			message: "Images uploaded successfully.",
+			imageUrls,
+		});
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({
+			error: "Image upload failed",
+			message: error.message,
+		});
+	}
+};
 
 /**
  * @desc    Create a new question
  * @route   POST /questions
  */
+
 const createQuestion = async (req, res) => {
 	try {
-		const question=req.body;
+		const {
+			question,
+			subject_code,
+			reference_book_or_source,
+			image_url,
+			options,
+			correct_option_ids,
+			difficulty,
+			chapter,
+		} = req.body;
+		const tenantId = req.user.tenantId;
+
+		const user = req.user;
+
+		const trimmedChapter = chapter?.trim() ?? "";
+		if (!question.trim()) {
+			return res
+				.status(400)
+				.json({ error: "Question text is required." });
+		}
+
+		if (!subject_code) {
+			return res.status(400).json({ error: "Subject code is required." });
+		}
+
+		if (!options || options.length != 4) {
+			return res
+				.status(400)
+				.json({
+					error: "4 options are required. Neither more nor less.",
+				});
+		}
+
+		if (!correct_option_ids || correct_option_ids.length === 0) {
+			return res
+				.status(400)
+				.json({ error: "At least one correct option is required." });
+		}
+		// Check that all correct_option_ids are within the range of options
+		const invalidOptionIds = correct_option_ids.some(
+			(id) => id < 0 || id >= options.length
+		);
+		if (invalidOptionIds) {
+			return res.status(400).json({
+				error: `Correct option IDs must be between 0 and ${options.length}.`,
+			});
+		}
+
+		// Check that all correct_option_ids are unique
+		const uniqueOptionIds = new Set(correct_option_ids);
+		if (uniqueOptionIds.size !== correct_option_ids.length) {
+			return res.status(400).json({
+				error: "Correct option IDs must be unique.",
+			});
+		}
+
+		if (difficulty < 1 || difficulty > 3) {
+			return res.status(400).json({
+				error: "Difficulty must be at least 1 and at most 3.",
+			});
+		}
+		const created_by = user.id;
+
+		const { _id: subject_id } = await Subject.findOne({
+			subject_code: subject_code,
+		});
+
+		if (!subject_id)
+			return res.status(404).json({ error: "Subject not found" });
+
+		// Create an options object with a 0-based ID
+		const options_object = options.map((text, index) => ({
+			id: index,
+			text: text,
+		}));
 		const newQuestion = new Question({
 			question: question,
 			subject_id: subject_id,
@@ -35,107 +156,6 @@ const createQuestion = async (req, res) => {
 		});
 	}
 };
-// const createQuestion = async (req, res) => {
-// 	try {
-// 		const {
-// 			question,
-// 			subject_code,
-// 			reference_book_or_source,
-// 			image_url,
-// 			options,
-// 			correct_option_ids,
-// 			difficulty,
-// 			chapter,
-// 		} = req.body;
-// 		const tenantId = req.user.tenantId;
-
-// 		const user = req.user;
-
-// const trimmedChapter = chapter?.trim() ?? "";
-// 		if (!question.trim()) {
-// 			return res
-// 				.status(400)
-// 				.json({ error: "Question text is required." });
-// 		}
-
-// 		if (!subject_code) {
-// 			return res.status(400).json({ error: "Subject code is required." });
-// 		}
-
-// 		if (!options || options.length < 2) {
-// 			return res
-// 				.status(400)
-// 				.json({ error: "At least two options are required." });
-// 		}
-
-// 		if (!correct_option_ids || correct_option_ids.length === 0) {
-// 			return res
-// 				.status(400)
-// 				.json({ error: "At least one correct option is required." });
-// 		}
-// 		// Check that all correct_option_ids are within the range of options
-// 		const invalidOptionIds = correct_option_ids.some(
-// 			(id) => id < 0 || id >= options.length
-// 		);
-// 		if (invalidOptionIds) {
-// 			return res.status(400).json({
-// 				error: `Correct option IDs must be between 0 and ${options.length}.`,
-// 			});
-// 		}
-
-// 		// Check that all correct_option_ids are unique
-// 		const uniqueOptionIds = new Set(correct_option_ids);
-// 		if (uniqueOptionIds.size !== correct_option_ids.length) {
-// 			return res.status(400).json({
-// 				error: "Correct option IDs must be unique.",
-// 			});
-// 		}
-
-// 		if (!difficulty || difficulty < 1 || difficulty > 5) {
-// 			return res.status(400).json({
-// 				error: "Difficulty must be at least 1 and at most 5.",
-// 			});
-// 		}
-// 		const created_by = user.id;
-
-// 		const { _id: subject_id } = await Subject.findOne({
-// 			subject_code: subject_code,
-// 		});
-
-// 		if (!subject_id)
-// 			return res.status(404).json({ error: "Subject not found" });
-
-// 		// Create an options object with a 0-based ID
-// 		const options_object = options.map((text, index) => ({
-// 			id: index,
-// 			text: text,
-// 		}));
-// 		const newQuestion = new Question({
-// 			question: question,
-// 			subject_id: subject_id,
-// 			created_by: created_by,
-// 			reference_book_or_source: reference_book_or_source,
-// 			image_url: image_url,
-// 			options: options_object,
-// 			correct_option_ids: correct_option_ids,
-// 			difficulty: difficulty,
-// 			tenantId: tenantId,
-// 		});
-
-// 		await newQuestion.save();
-// 		res.status(201).json({
-// 			message: "Question created successfully.",
-// 			newQuestion,
-// 		});
-// 	} catch (error) {
-// 		console.error(error);
-
-// 		res.status(500).json({
-// 			error: "An error occurred while creating the question.",
-// 			message: error.message,
-// 		});
-// 	}
-// };
 
 /**
  * @desc    Create multiple questions
@@ -386,4 +406,5 @@ export {
 	getAllQuestions,
 	updateQuestion,
 	deleteQuestion,
+	uploadImages,
 };
