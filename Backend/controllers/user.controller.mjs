@@ -6,8 +6,13 @@ import User from "../models/user.model.mjs";
 import Tenant from "../models/tenant.model.mjs";
 import { REGEX, ROLES } from "../constants/constants.mjs";
 import { config } from "../constants/config.mjs";
-import { validateUser } from "../validators/user.validator.mjs";
-import { saveUser } from "../repository/user.respository.mjs";
+import {
+	validateUser,
+	validateUserLogin,
+	validateMongoObjectID,
+} from "../validators/user.validator.mjs";
+import { getUserById, saveUser } from "../repository/user.respository.mjs";
+
 // Configure Multer to store file in memory
 
 const registerTeacher = async (req, res) => {
@@ -15,7 +20,7 @@ const registerTeacher = async (req, res) => {
 	console.log(req.body);
 	if (validationResult.errors) {
 		return res.status(400).json({
-			success: false,
+			status: 400,
 			errors: validationResult.errors,
 			message: validationResult.message,
 		});
@@ -31,16 +36,36 @@ const registerTeacher = async (req, res) => {
 	const newUser = await saveUser(user);
 
 	// TODO: Add logic to mail the email address that he/she is registered at the tenant as a teacher
+	const { password, __v, ...userData } = newUser.toObject();
 	res.status(201).json({
 		status: 201,
 		message: "Teacher created successfully",
-		data: {
-			name: newUser.name,
-			email: newUser.email,
-			phone_number: newUser.phone_number,
-			role: newUser.role,
-			tenantId: newUser.tenantId,
-		},
+		data: userData,
+	});
+};
+const registerStudent = async (req, res) => {
+	const validationResult = validateUser(req.body);
+	console.log(req.body);
+	if (validationResult.errors) {
+		return res.status(400).json({
+			success: false,
+			errors: validationResult.errors,
+			message: validationResult.message,
+		});
+	}
+	const user = validationResult.data;
+	user.tenantId = req.user.tenantId;
+
+	// Hash the password before saving
+	const hashedPassword = await bcrypt.hash(user.password, 10);
+	user.password = hashedPassword;
+	user.role = ROLES.STUDENT;
+
+	const newUser = await saveUser(user);
+	const { password, __v, ...userData } = newUser.toObject();
+	res.status(201).json({
+		message: "Student created successfully",
+		data: userData,
 	});
 };
 
@@ -215,36 +240,6 @@ const registerMultipleTeachers = async (req, res) => {
 		res.status(500).json({ error: "Internal Server Error" });
 	}
 };
-const registerStudent = async (req, res) => {
-	const validationResult = validateUser(req.body);
-	console.log(req.body);
-	if (validationResult.errors) {
-		return res.status(400).json({
-			success: false,
-			errors: validationResult.errors,
-			message: validationResult.message,
-		});
-	}
-	const user = validationResult.data;
-	user.tenantId = req.user.tenantId;
-
-	// Hash the password before saving
-	const hashedPassword = await bcrypt.hash(user.password, 10);
-	user.password = hashedPassword;
-	user.role = ROLES.STUDENT;
-
-	const newUser = await saveUser(user);
-	res.status(201).json({
-		message: "Student created successfully",
-		data: {
-			name: newUser.name,
-			email: newUser.email,
-			phone_number: newUser.phone_number,
-			role: newUser.role,
-			tenantId: newUser.tenantId,
-		},
-	});
-};
 
 const registerMultipleStudents = async (req, res) => {
 	try {
@@ -367,50 +362,42 @@ const registerMultipleStudents = async (req, res) => {
 			await User.insertMany(studentsToCreate);
 		}
 
-		res.status(201).json({
+		return res.status(201).json({
 			message: `${studentsToCreate.length} unique students registered successfully.`,
 			skipped: skippedRows.length,
 			skippedDetails: skippedRows,
 		});
 	} catch (error) {
 		console.error(error);
-		res.status(500).json({ error: "Internal Server Error" });
+		return res.status(500).json({ error: "Internal Server Error" });
 	}
 };
 
 const login = async (req, res) => {
-	const { username, email, phone_number, password } = req.body;
+	const validationResult = validateUserLogin(req.body);
+	if (validationResult.errors) {
+		return res.status(400).json({
+			errors: validationResult.errors,
+			message: validationResult.message,
+		});
+	}
+	const { email, phone_number, password } = validationResult.data;
 
-	const trimmedUsername = username?.trim().toLowerCase();
-	const trimmedEmail = email?.trim().toLowerCase();
-	const trimmedPhoneNumber = phone_number?.trim();
-	const trimmedPassword = password.trim();
-
-	if (
-		(!trimmedEmail && !trimmedPhoneNumber && !trimmedUsername) ||
-		!trimmedPassword
-	) {
+	if ((!email && !phone_number) || !password) {
 		return res.status(400).json({
 			error: "(Email or phone number or username) and password are required",
 		});
 	}
-	console.log(req.body);
-	console.log("\n\n\n-------------\n\n\n");
 
 	try {
 		const user = await User.findOne({
-			$or: [
-				{ email: trimmedEmail },
-				{ phone_number: trimmedPhoneNumber },
-			],
+			$or: [{ email: email }, { phone_number: phone_number }],
 		});
 		if (!user) {
 			return res.status(400).json({ error: "Invalid credentials" });
 		}
 
-		console.log(user);
-
-		const isMatch = await bcrypt.compare(trimmedPassword, user.password);
+		const isMatch = await bcrypt.compare(password, user.password);
 		if (!isMatch) {
 			return res.status(400).json({ error: "Invalid credentials" });
 		}
@@ -418,6 +405,8 @@ const login = async (req, res) => {
 		const token = jwt.sign(
 			{
 				userId: user._id,
+				email: user.email,
+				phone_number: user.phone_number,
 				role: user.role,
 				tenantId: user.tenantId,
 			},
@@ -425,34 +414,40 @@ const login = async (req, res) => {
 			{ expiresIn: "1h" }
 		);
 
-		res.status(200).json({
+		return res.status(200).json({
+			status: 200,
 			message: "Login successful",
-			token: token,
-			userId: user._id,
+			data: {
+				token,
+				userId: user._id,
+				role: user.role,
+				tenantId: user.tenantId,
+			},
 		});
 	} catch (error) {
 		console.error(error);
-		res.status(500).json({ message: "Login failed" });
+		return res.status(500).json({ message: "Login failed" });
 	}
 };
 
-const getUserById = async (req, res) => {
+const fetchUserById = async (req, res) => {
 	try {
-		const { id } = req.params; // Extract user ID from request parameters
-		const user = await User.findById(id).select("-password"); // Exclude password field
-
-		if (!user) {
-			return res
-				.status(404)
-				.json({ success: false, message: "User not found" });
+		const { id } = req.params;
+		const { user, error } = await getUserById(id);
+		if (error) {
+			return res.status(error.statusCode).json({
+				status: error.statusCode,
+				message: error.message,
+				data: [],
+			});
 		}
-
-		res.status(200).json({ success: true, user });
+		console.log(user);
+		return res.status(200).json({ status: 200, user });
 	} catch (error) {
-		console.error("Error fetching user:", error);
-		res.status(500).json({
-			success: false,
-			message: "Internal server error",
+		return res.status(error.statusCode).json({
+			status: error.statusCode,
+			message: error.message,
+			data: [],
 		});
 	}
 };
@@ -470,10 +465,10 @@ const getStudents = async (req, res) => {
 				.json({ success: false, message: "Students not found" });
 		}
 
-		res.status(200).json({ success: true, users });
+		return res.status(200).json({ success: true, users });
 	} catch (error) {
 		console.error("Error fetching user:", error);
-		res.status(500).json({
+		return res.status(500).json({
 			success: false,
 			message: "Internal server error",
 		});
@@ -493,10 +488,10 @@ const getTeachers = async (req, res) => {
 				.json({ success: false, message: "Teachers not found" });
 		}
 
-		res.status(200).json({ success: true, users });
+		return res.status(200).json({ success: true, users });
 	} catch (error) {
 		console.error("Error fetching user:", error);
-		res.status(500).json({
+		return res.status(500).json({
 			success: false,
 			message: "Internal server error",
 		});
@@ -611,7 +606,7 @@ export {
 	registerStudent,
 	registerMultipleStudents,
 	login,
-	getUserById,
+	fetchUserById,
 	updateUser,
 	deleteUser,
 	getStudents,

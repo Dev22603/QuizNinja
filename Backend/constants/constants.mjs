@@ -54,9 +54,12 @@ const ROLES = {
     TEST: "test",
   };
 
-  export const REGEX = {
+  const REGEX = {
     EMAIL: /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/,
-    PHONE: /^\d{10}$/, // Ensures exactly 10 digits (Indian phone numbers)
+    PHONE: /^[1-9]\d{9}$/, 
+    PASSWORD: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{}|;:'",.<>/?~`])(?=.{8,})/,
+    MONGO_ID: /^[a-fA-F\d]{24}$/,
+    MONGO_ID_2: /^[a-f\d]{24}$/i,
   };
   
   
@@ -69,6 +72,7 @@ const ROLES = {
     PAGINATION,
     QUIZ_SETTINGS,
     UPLOADS,
-    ENV
+    ENV,
+    REGEX
   };
   

@@ -1,7 +1,7 @@
 import express from "express";
 import {
 	deleteUser,
-	getUserById,
+	fetchUserById,
 	login,
 	updateUser,
 	registerTeacher,
@@ -24,7 +24,7 @@ const router = express.Router();
 router.post("/auth/login", login);
 
 /* 👤 USER MANAGEMENT ROUTES */
-router.get("/users/:id", authenticate, authorize([ROLES.ADMIN]), getUserById);
+router.get("/users/:id", authenticate, authorize([ROLES.ADMIN]), fetchUserById);
 router.get("/users/students", authenticate, getStudents);
 router.get("/users/teachers", authenticate, getTeachers);
 router.put("/users/:id", authenticate, authorize([ROLES.HOD]), updateUser);
