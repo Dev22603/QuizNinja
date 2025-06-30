@@ -9,7 +9,6 @@ import { config } from "../constants/config.mjs";
 import {
 	validateUser,
 	validateUserLogin,
-	validateMongoObjectID,
 } from "../validators/user.validator.mjs";
 import { getUserById, saveUser } from "../repository/user.respository.mjs";
 
