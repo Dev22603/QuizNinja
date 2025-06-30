@@ -39,7 +39,7 @@ router.delete(
 router.post(
 	"/teachers/register",
 	authenticate,
-	authorize([ROLES.HOD]),
+	authorize([ROLES.HOD, ROLES.ADMIN]),
 	registerTeacher
 );
 router.post(

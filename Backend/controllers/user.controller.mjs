@@ -1,58 +1,47 @@
 // controllers\user.controller.mjs
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import multer from "multer";
 import xlsx from "xlsx";
 import User from "../models/user.model.mjs";
 import Tenant from "../models/tenant.model.mjs";
 import { REGEX, ROLES } from "../constants/constants.mjs";
-import {config} from "../constants/config.mjs";
-
+import { config } from "../constants/config.mjs";
+import { validateUser } from "../validators/user.validator.mjs";
+import { saveUser } from "../repository/user.respository.mjs";
 // Configure Multer to store file in memory
 
 const registerTeacher = async (req, res) => {
-	const { name, email, phone_number, password } = req.body;
-	if (!name || !email || !phone_number) {
-		return res.status(400).json({ message: "Please fill in all fields" });
-	}
-	// Trim inputs
-	const trimmedName = name.trim();
-	const trimmedEmail = email.trim().toLowerCase();
-	const trimmedPhoneNumber = phone_number.trim();
-	const trimmedPassword = password.trim();
-
-	const tenantId = req.user.tenantId;
-
-	// Validate name
-	if (!trimmedName) {
-		return res.status(400).json({ message: "Name is required" });
+	const validationResult = validateUser(req.body);
+	console.log(req.body);
+	if (validationResult.errors) {
+		return res.status(400).json({
+			success: false,
+			errors: validationResult.errors,
+			message: validationResult.message,
+		});
 	}
 
-	// Validate email
-	if (!trimmedEmail || !REGEX.EMAIL.test(trimmedEmail)) {
-		return res.status(400).json({ error: "Invalid email format" });
-	}
-	// Validate phone number
-	if (!phone_number || !REGEX.PHONE.test(phone_number)) {
-		return res
-			.status(400)
-			.json({ error: "Invalid phone number. Must be 10 digits." });
-	}
+	const user = validationResult.data;
+	user.tenantId = req.user.tenantId;
+
 	// Hash the password before saving
-	const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
-	// Create a new Teacher
-	const newTeacher = await User.create({
-		name: trimmedName,
-		email: trimmedEmail,
-		phone_number: trimmedPhoneNumber,
-		role: ROLES.TEACHER,
-		tenantId: tenantId,
-		password: hashedPassword,
-	});
+	const hashedPassword = await bcrypt.hash(user.password, 10);
+	user.password = hashedPassword;
+	user.role = ROLES.TEACHER;
+	const newUser = await saveUser(user);
 
 	// TODO: Add logic to mail the email address that he/she is registered at the tenant as a teacher
-	// Return a success message
-	res.status(201).json({ message: "Teacher created successfully" });
+	res.status(201).json({
+		status: 201,
+		message: "Teacher created successfully",
+		data: {
+			name: newUser.name,
+			email: newUser.email,
+			phone_number: newUser.phone_number,
+			role: newUser.role,
+			tenantId: newUser.tenantId,
+		},
+	});
 };
 
 const registerMultipleTeachers = async (req, res) => {
@@ -227,45 +216,34 @@ const registerMultipleTeachers = async (req, res) => {
 	}
 };
 const registerStudent = async (req, res) => {
-	const { name, email, phone_number, password } = req.body;
-	if (!name || !email || !phone_number || !password) {
-		return res.status(400).json({ message: "Please fill in all fields" });
+	const validationResult = validateUser(req.body);
+	console.log(req.body);
+	if (validationResult.errors) {
+		return res.status(400).json({
+			success: false,
+			errors: validationResult.errors,
+			message: validationResult.message,
+		});
 	}
-
-	// Trim inputs
-	const trimmedName = name.trim();
-	const trimmedEmail = email.trim().toLowerCase();
-	const trimmedPhoneNumber = phone_number.trim();
-	const trimmedPassword = password.trim();
-
-	const tenantId = req.user.tenantId;
-
-	// Validate email
-	if (!REGEX.EMAIL.test(trimmedEmail)) {
-		return res.status(400).json({ error: "Invalid email format" });
-	}
-
-	// Validate phone number
-	if (!REGEX.PHONE.test(trimmedPhoneNumber)) {
-		return res
-			.status(400)
-			.json({ error: "Invalid phone number. Must be 10 digits." });
-	}
+	const user = validationResult.data;
+	user.tenantId = req.user.tenantId;
 
 	// Hash the password before saving
-	const hashedPassword = await bcrypt.hash(trimmedPassword, 10);
+	const hashedPassword = await bcrypt.hash(user.password, 10);
+	user.password = hashedPassword;
+	user.role = ROLES.STUDENT;
 
-	// Create a new Student
-	const newStudent = await User.create({
-		name: trimmedName,
-		email: trimmedEmail,
-		phone_number: trimmedPhoneNumber,
-		role: ROLES.STUDENT,
-		tenantId: tenantId,
-		password: hashedPassword,
+	const newUser = await saveUser(user);
+	res.status(201).json({
+		message: "Student created successfully",
+		data: {
+			name: newUser.name,
+			email: newUser.email,
+			phone_number: newUser.phone_number,
+			role: newUser.role,
+			tenantId: newUser.tenantId,
+		},
 	});
-
-	res.status(201).json({ message: "Student created successfully" });
 };
 
 const registerMultipleStudents = async (req, res) => {

@@ -9,16 +9,6 @@ const userSchema = new mongoose.Schema(
 			required: false, // Change to "true" if every user must belong to a tenant
 		},
 		name: { type: String, required: true, minlength: 2 },
-		username: {
-			type: String,
-			required: false, // Ensure it's always provided if it's unique
-			default:"",
-			lowercase: true,
-			match: [
-				/^[a-z_]*$/,
-				"Username can only contain lowercase letters and underscores",
-			],
-		},
 		role: {
 			type: String,
 			enum: Object.values(ROLES), // Use predefined roles
@@ -37,12 +27,11 @@ const userSchema = new mongoose.Schema(
 		phone_number: {
 			type: String,
 			required: true,
-			match: [/^\d{10}$/, "Please enter a valid 10-digit phone number"],
+			match: [/^[1-9]\d{9}$/, "Please enter a valid 10-digit phone number"],
 		},
 		password: {
 			type: String,
 			required: true,
-			minlength: 8,
 		},
 	},
 	{
